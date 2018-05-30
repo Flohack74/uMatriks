@@ -40,10 +40,10 @@ public:
 
     void registerApp(const QString &appid);
 
-    Q_PROPERTY(QString appId WRITE setAppId READ getAppId NOTIFY appIdChanged);
-    Q_PROPERTY(QString token READ getToken NOTIFY tokenChanged);
-    Q_PROPERTY(QStringList notifications READ getNotifications NOTIFY notificationsChanged);
-    Q_PROPERTY(QString status READ getStatus NOTIFY statusChanged);
+    Q_PROPERTY(QString appId WRITE setAppId READ getAppId NOTIFY appIdChanged)
+    Q_PROPERTY(QString token READ getToken NOTIFY tokenChanged)
+    Q_PROPERTY(QStringList notifications READ getNotifications NOTIFY notificationsChanged)
+    Q_PROPERTY(QString status READ getStatus NOTIFY statusChanged)
     Q_PROPERTY(int count READ getCount WRITE setCount NOTIFY countChanged)
 
 signals:

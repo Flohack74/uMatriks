@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
     QStringList args = app.arguments();
 
-    PushHelper pushHelper("com.ubuntu.telegram_telegram", // no-i18n
+    PushHelper pushHelper("umatriks.larreamikel_umatriks", // no-i18n
                           QString(args.at(1)), QString(args.at(2)), &app);
 
     QObject::connect(&pushHelper, SIGNAL(done()), &app, SLOT(quit()));

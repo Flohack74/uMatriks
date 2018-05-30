@@ -2,21 +2,15 @@
 #define PUSH_HELPER_H
 
 #include <QObject>
-#include <QString>
 #include <QJsonObject>
-#include <string>
-
-#include "config.h"
 #include "pushclient.h"
-
-// See: https://core.telegram.org/api/push-updates
 
 class PushHelper : public QObject {
     Q_OBJECT
 
 public:
-    PushHelper(QString appId, QString infile, QString outfile, QObject *parent = 0);
-    ~PushHelper();
+    PushHelper(const QString appId, const QString infile, const QString outfile, QObject *parent = 0);
+    ~PushHelper() = default;
     void process();
 
 Q_SIGNALS:
@@ -35,7 +29,6 @@ private:
     PushClient mPushClient;
     QString mInfile;
     QString mOutfile;
-
     QJsonObject mPostalMessage;
 };
 

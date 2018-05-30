@@ -1,33 +1,21 @@
+#include "pushhelper.h"
 #include <QApplication>
 #include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonArray>
-#include <QSqlDatabase>
 #include <QStringList>
-#include <QSqlQuery>
-#include <QSqlRecord>
-#include <QTextStream>
 
-#include "i18n.h"
-#include "pushhelper.h"
 
-PushHelper::PushHelper(QString appId, QString infile, QString outfile,
-                       QObject *parent) : QObject(parent) {
-    setlocale(LC_ALL, "");
-    textdomain(GETTEXT_DOMAIN.toStdString().c_str());
-
+PushHelper::PushHelper(const QString appId, const QString infile, const QString outfile, QObject *parent) : QObject(parent),
+    mInfile(infile), mOutfile(outfile)
+{
     connect(&mPushClient, SIGNAL(persistentCleared()),
                     this, SLOT(notificationDismissed()));
 
     mPushClient.setAppId(appId);
     mPushClient.registerApp(appId);
-    mInfile = infile;
-    mOutfile = outfile;
-}
-
-PushHelper::~PushHelper() {
 }
 
 void PushHelper::process() {
@@ -73,60 +61,57 @@ void PushHelper::dismissNotification(const QString &tag) {
 }
 
 QJsonObject PushHelper::pushToPostalMessage(const QJsonObject &push, QString &tag) {
-    QString summary = "";
-    QString body = "";
-    qint32 count = 0;
-
-    QJsonObject message = push["message"].toObject();
-    QJsonObject custom = message["custom"].toObject();
-
-    QString key = "";
-    if (message.keys().contains("loc_key")) {
-        key = message["loc_key"].toString();    // no-i18n
+    /**
+     * For now only show a notification card for messages and call invites
+     *
+     * For anything else just return the original json in the `message` field to
+     * be delivered to the app.
+     */
+    const QString type = push["type"].toString();
+    if (type != QStringLiteral("m.room.message") && type != QStringLiteral("m.call.invite")) {
+        return QJsonObject{
+            {"message", push},
+        };
     }
 
-    QJsonArray args;
-    if (message.keys().contains("loc_args")) {
-        args = message["loc_args"].toArray();   // no-i18n
+    // First try the sender displayname otherwise fallback
+    // to the full length username type string thingy
+    QString sender = push["sender_display_name"].toString();
+    if (sender.isEmpty()) {
+        sender = push["sender"].toString();
     }
+    // Unread count
+    const QJsonObject counts = push["counts"].toObject();
+    const qint32 unread = qint32(counts["unread"].toInt());
+    // Content object containing message body
+    const QJsonObject content = push["content"].toObject();
+    //The notification object to be passed to Postal
+    QJsonObject notification{
+        {"tag", tag},
+        {"card", QJsonObject{
+            {"summary", sender},
+            {"body", content["body"].toString()},
+            // For now the chat id is the push messages id. The app can then search the list of
+            // delivered messages via PushClient::notificationsChanged(QStringList) in qml
+            // TODO: come up with a url scheme to be able to launch to a specific view state
+            {"actions", QJsonArray() << QString("matriks://chat/%1").arg(QString::number(push["id"].toInt()))},
+            {"popup", true},
+            {"persist", true},
+        }},
+        {"emblem-counter", QJsonObject{
+            {"count", unread},
+            {"unread", unread > 0},
+        }},
+        {"sound", true},
+        {"vibrate", QJsonObject{
+            {"pattern", QJsonArray() << 200 << 100},
+            {"duration", 200},
+            {"repeat", 2},
+        }},
+    };
 
-	//BEGIN to customize here!
-	
-	summary = tg;
-	body = N_("You have a new message");
-
-	//Notification pop-up parameters
-
-	//Actions
-	//Clicking on the notifications can trigger an action (opening the App)
-    QJsonArray actions = QJsonArray();
-    QString actionUri = QString("matriks://chat/%1").arg(chatId);
-    actions.append(actionUri);
-
-	//Card
-    QJsonObject card;
-    card["summary"] = summary;  // no-i18n
-    card["body"]    = body;     // no-i18n
-    card["actions"] = actions;  // no-i18n
-    card["popup"]   = true;     // no-i18n // TODO make setting
-    card["persist"] = true;     // no-i18n // TODO make setting
-
-	//Show count of unread messages on top of the app symbol?
-	auto unreadCount = 0;
-    QJsonObject emblem;
-    emblem["count"] = unreadCount;                    // no-i18n
-    emblem["visible"] = unreadCount > 0;              // no-i18n
-
-	//The final object to be passed to Postal
-    QJsonObject notification;
-    notification["tag"] = tag;                  // no-i18n
-    notification["card"] = card;                // no-i18n
-    notification["emblem-counter"] = emblem;    // no-i18n
-    notification["sound"] = true;               // no-i18n // TODO make setting
-    notification["vibrate"] = true;             // no-i18n // TODO make setting
-
-    QJsonObject postalMessage = QJsonObject();
-    postalMessage["notification"] = notification; // no-i18n
-
-    return postalMessage;
+    return QJsonObject{
+        {"message", push}, // Include the original matrix push object to be delivered to the app
+        {"notification", notification}
+    };
 }

@@ -9,7 +9,7 @@
             "desktop": "uMatriks/uMatriks.desktop",
             "content-hub": "uMatriks/content-hub.json"
         },
-		"push": {
+	"push": {
             "apparmor": "pushhelper/apparmor-push.json",
             "push-helper": "pushhelper/push-helper.json"
         }

@@ -1,5 +1,6 @@
 TEMPLATE = app
 TARGET = push
+CONFIG += c++14 
 QT -= gui
 QT += dbus widgets
 INCLUDEPATH += .
